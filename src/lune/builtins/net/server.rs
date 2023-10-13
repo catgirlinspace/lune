@@ -21,7 +21,7 @@ use super::{
 };
 
 pub(super) fn bind_to_localhost(port: u16) -> LuaResult<Builder<AddrIncoming>> {
-    let addr = match SocketAddr::try_from(([127, 0, 0, 1], port)) {
+    let addr = match SocketAddr::try_from(([0, 0, 0, 0], port)) {
         Ok(a) => a,
         Err(e) => {
             return Err(LuaError::external(format!(
