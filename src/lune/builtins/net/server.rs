@@ -1,7 +1,7 @@
 use std::{
     collections::HashMap,
     convert::Infallible,
-    net::{Ipv4Addr, SocketAddr},
+    net::{Ipv4Addr, IpAddr, SocketAddr},
     sync::Arc,
 };
 
@@ -25,7 +25,7 @@ use super::{
     websocket::NetWebSocket,
 };
 
-pub(super) fn bind_to_addr(address: Ipv4Addr, port: u16) -> LuaResult<Builder<AddrIncoming>> {
+pub(super) fn bind_to_addr(address: IpAddr, port: u16) -> LuaResult<Builder<AddrIncoming>> {
     let addr = SocketAddr::from((address, port));
 
     match Server::try_bind(&addr) {

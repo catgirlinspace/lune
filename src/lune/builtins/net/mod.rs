@@ -1,4 +1,5 @@
 use std::net::Ipv4Addr;
+use std::net::IpAddr;
 
 use mlua::prelude::*;
 
@@ -143,7 +144,7 @@ where
         .app_data_ref::<&Scheduler>()
         .expect("Lua struct is missing scheduler");
 
-    let address: Ipv4Addr = match &config.address {
+    let address: IpAddr = match &config.address {
         Some(addr) => {
             let addr_str = addr.to_str()?;
 
