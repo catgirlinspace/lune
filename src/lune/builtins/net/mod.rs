@@ -29,7 +29,7 @@ use client::{NetClient, NetClientBuilder};
 use config::{RequestConfig, ServeConfig};
 use websocket::NetWebSocket;
 
-const DEFAULT_IP_ADDRESS: Ipv4Addr = Ipv4Addr::new(127, 0, 0, 1);
+const DEFAULT_IP_ADDRESS: IpAddr = IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1));
 
 pub fn create(lua: &'static Lua) -> LuaResult<LuaTable> {
     NetClientBuilder::new()
