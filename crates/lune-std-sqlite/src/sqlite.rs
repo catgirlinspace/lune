@@ -1,5 +1,8 @@
 use std::collections::HashMap;
-use rusqlite::{Connection, params_from_iter, Result};
+use std::path::Path;
+use mlua::prelude::LuaUserData;
+use mlua::{ExternalResult, UserDataMethods};
+use rusqlite::{Connection, params_from_iter, Result, Rows};
 use lune_utils::TableBuilder;
 
 #[derive(Debug)]
@@ -11,28 +14,48 @@ pub struct SQLite {
 }
 
 impl SQLite {
-    pub fn connect(path: impl AsRef<str>) -> Result<SQLite> {
-        let inner = Connection::open(path)?;
+    pub fn connect(path: String) -> Result<SQLite> {
+        let inner = Connection::open(&path)?;
         Ok(Self { inner })
     }
 
-    pub fn execute(&self, sql: Option<&str>, parameters: Option<&Vec<str>>) -> Result<usize> {
-        self.inner.execute(sql.unwrap(), params_from_iter(parameters.unwrap()))
+    pub fn execute(&self, sql: Option<String>, parameters: Option<Vec<String>>) -> Result<usize> {
+        self.inner.execute(&*sql.unwrap(), params_from_iter(parameters.unwrap()))
     }
 
-    pub fn query(&self, sql: Option<&str>, parameters: Option<&Vec<str>>) -> mlua::Result<Table<'lua>> {
-        let mut stmt = self.inner.prepare(sql.unwrap())?;
+    pub fn query(&self, sql: Option<String>, parameters: Option<Vec<String>>) -> Result<(Rows<'_>, Vec<&str>)> {
+        let mut stmt = self.inner.prepare(&*sql.unwrap())?;
         let mut rows = stmt.query(params_from_iter(parameters.unwrap()))?;
-        let mut lua_rows = TableBuilder::new()?; // needs a lua... idk how to do
         let column_names = stmt.column_names();
 
-        while let Some(row) = rows.next()? {
-            let mut data = HashMap::new();
-            for (i, column_name) in column_names.iter().enumerate() {
-                data.insert(column_name, row.get_unwrap(i));
-            }
-            lua_rows.with_sequential_value(data)?;
-        };
-        lua_rows.build()
+        Ok((rows, column_names))
+    }
+}
+
+impl LuaUserData for SQLite {
+    fn add_methods<'lua, M: UserDataMethods<'lua, Self>>(methods: &mut M) {
+        methods.add_method(
+            "execute",
+            |_, this, (sql, params): (Option<String>, Option<Vec<String>>)| {
+                let rows_modified: f64 = this.execute(sql, params).unwrap() as f64;
+                Ok(rows_modified)
+            },
+        );
+
+        methods.add_method(
+            "query",
+            |lua, this, (sql, params): (Option<String>, Option<Vec<String>>)| {
+                let Ok((mut rows, columns)) = this.query(sql, params).into_lua_err();
+                let mut table_builder = TableBuilder::new(lua)?;
+                while let Some(row) = rows.next().unwrap() {
+                    let mut row_builder = TableBuilder::new(lua)?;
+                    for (i, column) in columns.iter().enumerate() {
+                        row_builder.with_value(column.to_string(), row.get_unwrap(i))?;
+                    }
+                    table_builder.with_sequential_value(row_builder.build()?)?;
+                }
+                table_builder.build()
+            },
+        );
     }
 }

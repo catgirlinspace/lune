@@ -7,6 +7,7 @@ use mlua::prelude::*;
 use lune_utils::TableBuilder;
 
 use rusqlite::{Connection, Result};
+use crate::sqlite::SQLite;
 
 /**
 Creates the `datetime` standard library module.
