@@ -20,7 +20,7 @@ impl SQLite {
         self.inner.execute(sql.unwrap(), params_from_iter(parameters.unwrap()))
     }
 
-    pub fn query(&self, sql: Option<&str>, parameters: Option<&Vec<str>>) -> Result<usize> {
+    pub fn query(&self, sql: Option<&str>, parameters: Option<&Vec<str>>) -> mlua::Result<Table<'lua>> {
         let mut stmt = self.inner.prepare(sql.unwrap())?;
         let mut rows = stmt.query(params_from_iter(parameters.unwrap()))?;
         let mut lua_rows = TableBuilder::new()?; // needs a lua... idk how to do
@@ -33,5 +33,6 @@ impl SQLite {
             }
             lua_rows.with_sequential_value(data)?;
         };
+        lua_rows.build()
     }
 }
