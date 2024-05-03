@@ -12,7 +12,7 @@ members = [
     "crates/lune-std-process",
     "crates/lune-std-regex",
     "crates/lune-std-roblox",
-    "crates/lune-std-serde",
+    "crates/lune-std-serde", "crates/lune-std-sqlite",
     "crates/lune-std-stdio",
     "crates/lune-std-task",
     "crates/lune-utils",
