@@ -9,6 +9,8 @@ path = "src/lib.rs"
 [dependencies]
 mlua = { version = "0.9.7", features = ["luau"] }
 rusqlite = { version = "0.31.0", features = ["bundled", "chrono", "serde_json"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = { version = "1.0", features = ["preserve_order"] }
 lune-utils = { version = "0.1.0", path = "../lune-utils" }
 
 [lints]
