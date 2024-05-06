@@ -1,6 +1,6 @@
 use lune_utils::TableBuilder;
 use mlua::prelude::LuaUserData;
-use mlua::{LuaSerdeExt, UserDataMethods};
+use mlua::{ExternalResult, LuaSerdeExt, UserDataMethods};
 use rusqlite::types::{FromSqlError, FromSqlResult, ValueRef};
 use rusqlite::{params_from_iter, Connection, Result};
 use serde_json::{Number, Value};
@@ -46,28 +46,27 @@ impl SQLite {
         &self,
         sql: Option<String>,
         parameters: Option<Vec<String>>,
-    ) -> Vec<HashMap<String, Value>> {
-        let mut stmt = self.inner.prepare(&sql.unwrap()).unwrap();
+    ) -> Result<Vec<HashMap<String, Value>>> {
+        let mut stmt = self.inner.prepare(&sql.unwrap())?;
         let mut column_names: Vec<String> = Vec::new();
         for column_name in stmt.column_names() {
             column_names.push(column_name.to_string());
         }
         let mut rows = stmt
-            .query(params_from_iter(parameters.unwrap_or(Vec::new())))
-            .unwrap();
+            .query(params_from_iter(parameters.unwrap_or(Vec::new())))?;
         let mut data = Vec::new();
 
-        while let Some(row) = rows.next().unwrap() {
+        while let Some(row) = rows.next()? {
             let mut row_data = HashMap::new();
             for (i, column_name) in column_names.iter().enumerate() {
-                let value_ref = row.get_ref_unwrap(i);
-                let value = convert_to_lua_compatible_type(value_ref).unwrap();
+                let value_ref = row.get_ref(i)?;
+                let value = convert_to_lua_compatible_type(value_ref)?;
                 row_data.insert(column_name.to_string(), value);
             }
             data.push(row_data);
         }
 
-        data
+        Ok(data)
     }
 }
 
@@ -76,7 +75,7 @@ impl LuaUserData for SQLite {
         methods.add_method(
             "execute",
             |_, this, (sql, params): (Option<String>, Option<Vec<String>>)| {
-                let rows_modified: f64 = this.execute(sql, params).unwrap() as f64;
+                let rows_modified: f64 = this.execute(sql, params).into_lua_err()? as f64;
                 Ok(rows_modified)
             },
         );
@@ -84,7 +83,7 @@ impl LuaUserData for SQLite {
         methods.add_method(
             "query",
             |lua, this, (sql, params): (Option<String>, Option<Vec<String>>)| {
-                let data = this.query(sql, params);
+                let data = this.query(sql, params).into_lua_err()?;
                 let mut table_builder = TableBuilder::new(lua)?;
                 for row in data {
                     let mut row_builder = TableBuilder::new(lua)?;
@@ -95,7 +94,7 @@ impl LuaUserData for SQLite {
                     }
                     table_builder = table_builder.with_sequential_value(row_builder.build()?)?;
                 }
-                table_builder.build()
+                Ok(table_builder.build())
             },
         );
     }
