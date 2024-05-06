@@ -19,3 +19,5 @@ local sqlite = {}
 function sqlite.new(path: string): SQLiteDB
     return nil :: any
 end
+
+return sqlite
