@@ -1,6 +1,6 @@
 local SQLiteDB = {}
 
-function SQLiteDB:execute(sql: string, params: {any}): number
+function SQLiteDB:execute(sql: string, params: {any}?): number
     return nil :: any
 end
 
@@ -8,7 +8,7 @@ type QueryReturn = {
     [number]: { [string]: any }
 }
 
-function SQLiteDB:query(sql: string, params: {any}): QueryReturn
+function SQLiteDB:query(sql: string, params: {any}?): QueryReturn
     return nil :: any
 end
 
