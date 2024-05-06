@@ -26,9 +26,6 @@ fn convert_to_lua_compatible_type(value: ValueRef<'_>) -> FromSqlResult<Value> {
 
 #[derive(Debug)]
 pub struct SQLite {
-    // NOTE: We store this as the UTC time zone since it is the most commonly
-    // used and getting the generics right for TimeZone is somewhat tricky,
-    // but none of the method implementations below should rely on this tz
     inner: Connection,
 }
 
@@ -40,7 +37,7 @@ impl SQLite {
 
     pub fn execute(&self, sql: Option<String>, parameters: Option<Vec<String>>) -> Result<usize> {
         self.inner.execute(
-            &*sql.unwrap(),
+            &sql.unwrap(),
             params_from_iter(parameters.unwrap_or(Vec::new())),
         )
     }
@@ -50,7 +47,7 @@ impl SQLite {
         sql: Option<String>,
         parameters: Option<Vec<String>>,
     ) -> Vec<HashMap<String, Value>> {
-        let mut stmt = self.inner.prepare(&*sql.unwrap()).unwrap();
+        let mut stmt = self.inner.prepare(&sql.unwrap()).unwrap();
         let mut column_names: Vec<String> = Vec::new();
         for column_name in stmt.column_names() {
             column_names.push(column_name.to_string());
@@ -67,7 +64,7 @@ impl SQLite {
                 let value = convert_to_lua_compatible_type(value_ref).unwrap();
                 row_data.insert(column_name.to_string(), value);
             }
-            data.push(row_data)
+            data.push(row_data);
         }
 
         data
