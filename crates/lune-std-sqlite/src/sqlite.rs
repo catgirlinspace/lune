@@ -1,5 +1,5 @@
 use lune_utils::TableBuilder;
-use mlua::prelude::{LuaUserData};
+use mlua::prelude::LuaUserData;
 use mlua::{LuaSerdeExt, UserDataMethods};
 use rusqlite::types::{FromSqlError, FromSqlResult, ValueRef};
 use rusqlite::{params_from_iter, Connection, Result};
