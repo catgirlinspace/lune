@@ -1,5 +1,5 @@
 use lune_utils::TableBuilder;
-use mlua::prelude::LuaUserData;
+use mlua::prelude::{LuaUserData, LuaValue};
 use mlua::{ExternalResult, LuaSerdeExt, UserDataMethods};
 use rusqlite::types::{FromSqlError, FromSqlResult, ValueRef};
 use rusqlite::{params_from_iter, Connection, Result};
@@ -11,7 +11,8 @@ fn convert_to_lua_compatible_type(value: ValueRef<'_>) -> FromSqlResult<Value> {
     match value {
         ValueRef::Text(s) => Ok(serde_json::from_slice(s)
             .unwrap_or(Value::String(str::from_utf8(s).unwrap().to_string()))), // KO for b"text"
-        ValueRef::Blob(b) => serde_json::from_slice(b),
+        ValueRef::Blob(b) => Ok(serde_json::from_slice(b)
+            .unwrap_or(Value::String(str::from_utf8(b).unwrap().to_string()))),
         ValueRef::Integer(i) => Ok(Value::Number(Number::from(i))),
         ValueRef::Real(f) => {
             match Number::from_f64(f) {
@@ -21,7 +22,6 @@ fn convert_to_lua_compatible_type(value: ValueRef<'_>) -> FromSqlResult<Value> {
         }
         ValueRef::Null => Ok(Value::Null),
     }
-    .map_err(|err| FromSqlError::Other(Box::new(err)))
 }
 
 #[derive(Debug)]
@@ -35,7 +35,7 @@ impl SQLite {
         Ok(Self { inner })
     }
 
-    pub fn execute(&self, sql: Option<String>, parameters: Option<Vec<String>>) -> Result<usize> {
+    pub fn execute(&self, sql: Option<String>, parameters: Option<Vec<Value>>) -> Result<usize> {
         self.inner.execute(
             &sql.unwrap(),
             params_from_iter(parameters.unwrap_or(Vec::new())),
@@ -45,7 +45,7 @@ impl SQLite {
     pub fn query(
         &self,
         sql: Option<String>,
-        parameters: Option<Vec<String>>,
+        parameters: Option<Vec<Value>>,
     ) -> Result<Vec<HashMap<String, Value>>> {
         let mut stmt = self.inner.prepare(&sql.unwrap())?;
         let mut column_names: Vec<String> = Vec::new();
@@ -74,16 +74,26 @@ impl LuaUserData for SQLite {
     fn add_methods<'lua, M: UserDataMethods<'lua, Self>>(methods: &mut M) {
         methods.add_method(
             "execute",
-            |_, this, (sql, params): (Option<String>, Option<Vec<String>>)| {
-                let rows_modified: f64 = this.execute(sql, params).into_lua_err()? as f64;
+            |lua, this, (sql, params): (Option<String>, Option<Vec<LuaValue>>)| {
+                let mut sql_params: Vec<Value> = Vec::new();
+                for param in params.unwrap_or(Vec::new()) {
+                    let value: Value = lua.from_value(param).into_lua_err()?;
+                    sql_params.push(value);
+                }
+                let rows_modified: f64 = this.execute(sql, Some(sql_params)).into_lua_err()? as f64;
                 Ok(rows_modified)
             },
         );
 
         methods.add_method(
             "query",
-            |lua, this, (sql, params): (Option<String>, Option<Vec<String>>)| {
-                let data = this.query(sql, params).into_lua_err()?;
+            |lua, this, (sql, params): (Option<String>, Option<Vec<LuaValue>>)| {
+                let mut sql_params: Vec<Value> = Vec::new();
+                for param in params.unwrap_or(Vec::new()) {
+                    let value: Value = lua.from_value(param).into_lua_err()?;
+                    sql_params.push(value);
+                }
+                let data = this.query(sql, Some(sql_params)).into_lua_err()?;
                 let mut table_builder = TableBuilder::new(lua)?;
                 for row in data {
                     let mut row_builder = TableBuilder::new(lua)?;
