@@ -4,11 +4,15 @@ function SQLiteDB:execute(sql: string, params: {any}?): number
     return nil :: any
 end
 
-type QueryReturn = {
-    [number]: { [string]: any }
+function SQLiteDB:executeBatch(sql: string): void
+    return nil :: any
+end
+
+export type QueryReturn<T = {[string]: any}> = {
+    [number]: T
 }
 
-function SQLiteDB:query(sql: string, params: {any}?): QueryReturn
+function SQLiteDB:query<T>(sql: string, params: {any}?): QueryReturn<T>
     return nil :: any
 end
 

@@ -42,6 +42,12 @@ impl SQLite {
         )
     }
 
+    pub fn execute_batch(&self, sql: Option<String>) -> Result<()> {
+        self.inner.execute_batch(
+            &sql.unwrap(),
+        )
+    }
+
     pub fn query(
         &self,
         sql: Option<String>,
@@ -82,6 +88,14 @@ impl LuaUserData for SQLite {
                 }
                 let rows_modified: f64 = this.execute(sql, Some(sql_params)).into_lua_err()? as f64;
                 Ok(rows_modified)
+            },
+        );
+        
+        methods.add_method(
+            "executeBatch",
+            |lua, this, (sql): (Option<String>)| {
+                this.execute_batch(sql).into_lua_err()?;
+                Ok(())
             },
         );
 
