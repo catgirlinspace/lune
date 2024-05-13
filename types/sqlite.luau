@@ -4,7 +4,7 @@ function SQLiteDB:execute(sql: string, params: {any}?): number
     return nil :: any
 end
 
-function SQLiteDB:executeBatch(sql: string): void
+function SQLiteDB:executeBatch(sql: string): ()
     return nil :: any
 end
 
