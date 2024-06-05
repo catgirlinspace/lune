@@ -1,0 +1,16 @@
+[package]
+name = "lune-std-argon2"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+mlua = { version = "0.9.7", features = ["luau"] }
+lune-utils = { version = "0.1.0", path = "../lune-utils" }
+argon2 = { version = "0.5.3", features = ["password-hash", "rand"] }
+rand_core = { version = "0.6.4", features = ["std"] }
+
+[lints]
+workspace = true

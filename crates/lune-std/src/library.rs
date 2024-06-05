@@ -18,6 +18,7 @@ pub enum LuneStandardLibrary {
     #[cfg(feature = "serde")]    Serde,
     #[cfg(feature = "stdio")]    Stdio,
     #[cfg(feature = "sqlite")]   Sqlite,
+    #[cfg(feature = "argon2")]   Argon2,
     #[cfg(feature = "roblox")]   Roblox,
 }
 
@@ -37,6 +38,7 @@ impl LuneStandardLibrary {
         #[cfg(feature = "serde")]    Self::Serde,
         #[cfg(feature = "stdio")]    Self::Stdio,
         #[cfg(feature = "sqlite")]   Self::Sqlite,
+        #[cfg(feature = "argon2")]   Self::Argon2,
         #[cfg(feature = "roblox")]   Self::Roblox,
     ];
 
@@ -58,6 +60,7 @@ impl LuneStandardLibrary {
             #[cfg(feature = "serde")]    Self::Serde    => "serde",
             #[cfg(feature = "stdio")]    Self::Stdio    => "stdio",
             #[cfg(feature = "sqlite")]   Self::Sqlite   => "sqlite",
+            #[cfg(feature = "argon2")]   Self::Argon2   => "argon2",
             #[cfg(feature = "roblox")]   Self::Roblox   => "roblox",
 
             _ => unreachable!("no standard library enabled"),
@@ -85,6 +88,7 @@ impl LuneStandardLibrary {
             #[cfg(feature = "serde")]    Self::Serde    => lune_std_serde::module(lua),
             #[cfg(feature = "stdio")]    Self::Stdio    => lune_std_stdio::module(lua),
             #[cfg(feature = "sqlite")]   Self::Sqlite   => lune_std_sqlite::module(lua),
+            #[cfg(feature = "argon2")]   Self::Argon2   => lune_std_argon2::module(lua),
             #[cfg(feature = "roblox")]   Self::Roblox   => lune_std_roblox::module(lua),
 
             _ => unreachable!("no standard library enabled"),
@@ -115,6 +119,7 @@ impl FromStr for LuneStandardLibrary {
             #[cfg(feature = "serde")]    "serde"    => Self::Serde,
             #[cfg(feature = "stdio")]    "stdio"    => Self::Stdio,
             #[cfg(feature = "sqlite")]   "sqlite"   => Self::Sqlite,
+            #[cfg(feature = "argon2")]   "argon2"   => Self::Argon2,
             #[cfg(feature = "roblox")]   "roblox"   => Self::Roblox,
 
             _ => {

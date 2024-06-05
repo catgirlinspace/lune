@@ -22,6 +22,7 @@ default = [
     "serde",
     "stdio",
     "sqlite",
+    "argon2",
     "task",
 ]
 
@@ -35,6 +36,7 @@ roblox = ["dep:lune-std-roblox"]
 serde = ["dep:lune-std-serde"]
 stdio = ["dep:lune-std-stdio"]
 sqlite = ["dep:lune-std-sqlite"]
+argon2 = ["dep:lune-std-argon2"]
 task = ["dep:lune-std-task"]
 
 [dependencies]
@@ -57,4 +59,5 @@ lune-std-roblox = { optional = true, version = "0.1.0", path = "../lune-std-robl
 lune-std-serde = { optional = true, version = "0.1.0", path = "../lune-std-serde" }
 lune-std-stdio = { optional = true, version = "0.1.0", path = "../lune-std-stdio" }
 lune-std-sqlite = { optional = true, version = "0.1.0", path = "../lune-std-sqlite" }
+lune-std-argon2 = { optional = true, version = "0.1.0", path = "../lune-std-argon2" }
 lune-std-task = { optional = true, version = "0.1.0", path = "../lune-std-task" }
