@@ -113,8 +113,10 @@ impl LuaUserData for SQLite {
                     let mut row_builder = TableBuilder::new(lua)?;
                     for column_name in row.keys() {
                         let column_value = row.get(column_name).unwrap();
-                        let lua_value = lua.to_value(&column_value)?;
-                        row_builder = row_builder.with_value(column_name.to_string(), lua_value)?;
+                        if !column_value.is_null() {
+                            let lua_value = lua.to_value(&column_value)?;
+                            row_builder = row_builder.with_value(column_name.to_string(), lua_value)?;
+                        }
                     }
                     table_builder = table_builder.with_sequential_value(row_builder.build()?)?;
                 }
