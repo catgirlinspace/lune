@@ -12,10 +12,12 @@ members = [
     "crates/lune-std-process",
     "crates/lune-std-regex",
     "crates/lune-std-roblox",
-    "crates/lune-std-serde", "crates/lune-std-sqlite",
+    "crates/lune-std-serde",
+    "crates/lune-std-sqlite",
     "crates/lune-std-stdio",
     "crates/lune-std-task",
     "crates/lune-utils",
+    "crates/mlua-luau-scheduler",
 ]
 
 # Profile for building the release binary, with the following options set:
@@ -45,19 +47,43 @@ all = { level = "deny", priority = -3 }
 cargo = { level = "warn", priority = -2 }
 pedantic = { level = "warn", priority = -1 }
 
-cast_lossless = { level = "allow", priority = 1 }
-cast_possible_truncation = { level = "allow", priority = 1 }
-cast_possible_wrap = { level = "allow", priority = 1 }
-cast_precision_loss = { level = "allow", priority = 1 }
-cast_sign_loss = { level = "allow", priority = 1 }
+### NET
 
-similar_names = { level = "allow", priority = 1 }
-unnecessary_wraps = { level = "allow", priority = 1 }
-unnested_or_patterns = { level = "allow", priority = 1 }
-unreadable_literal = { level = "allow", priority = 1 }
+hyper = { version = "1.1", features = ["full"] }
+hyper-util = { version = "0.1", features = ["full"] }
+http = "1.0"
+http-body-util = { version = "0.1" }
+hyper-tungstenite = { version = "0.13" }
 
-multiple_crate_versions = { level = "allow", priority = 1 }
-module_inception = { level = "allow", priority = 1 }
-module_name_repetitions = { level = "allow", priority = 1 }
-needless_pass_by_value = { level = "allow", priority = 1 }
-wildcard_imports = { level = "allow", priority = 1 }
+reqwest = { version = "0.11", default-features = false, features = [
+    "rustls-tls",
+] }
+
+tokio-tungstenite = { version = "0.21", features = ["rustls-tls-webpki-roots"] }
+
+### DATETIME
+chrono = "=0.4.34" # NOTE: 0.4.35 does not compile with chrono_lc
+chrono_lc = "0.1"
+
+### CLI
+
+anyhow = { optional = true, version = "1.0" }
+env_logger = { optional = true, version = "0.11" }
+itertools = "0.12"
+clap = { optional = true, version = "4.1", features = ["derive"] }
+include_dir = { optional = true, version = "0.7", features = ["glob"] }
+rustyline = { optional = true, version = "14.0" }
+zip_next = { optional = true, version = "1.1" }
+
+### ROBLOX
+
+glam = { optional = true, version = "0.27" }
+rand = { optional = true, version = "0.8" }
+
+rbx_cookie = { optional = true, version = "0.1.4", default-features = false }
+
+rbx_binary = { optional = true, version = "0.7.3" }
+rbx_dom_weak = { optional = true, version = "2.6.0" }
+rbx_reflection = { optional = true, version = "4.4.0" }
+rbx_reflection_database = { optional = true, version = "0.2.9" }
+rbx_xml = { optional = true, version = "0.13.2" }

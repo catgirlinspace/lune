@@ -8,9 +8,70 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## Unreleased
+## `0.8.6` - June 23rd, 2024
+
+### Added
+
+- Added a builtin API for hashing and calculating HMACs as part of the `serde` library ([#193])
+
+  Basic usage:
+
+  ```lua
+  local serde = require("@lune/serde")
+  local hash = serde.hash("sha256", "a message to hash")
+  local hmac = serde.hmac("sha256", "a message to hash", "a secret string")
+
+  print(hash)
+  print(hmac)
+  ```
+
+  The returned hashes are sequences of lowercase hexadecimal digits. The following algorithms are supported:
+  `md5`, `sha1`, `sha224`, `sha256`, `sha384`, `sha512`, `sha3-224`, `sha3-256`, `sha3-384`, `sha3-512`, `blake3`
+
+- Added two new options to `luau.load`:
+
+  - `codegenEnabled` - whether or not codegen should be enabled for the loaded chunk.
+  - `injectGlobals` - whether or not to inject globals into a passed `environment`.
+
+  By default, globals are injected and codegen is disabled.
+  Check the documentation for the `luau` standard library for more information.
+
+- Implemented support for floor division operator / `__idiv` for the `Vector2` and `Vector3` types in the `roblox` standard library ([#196])
+- Fixed the `_VERSION` global containing an incorrect Lune version string.
 
 ### Changed
+
+- Sandboxing and codegen in the Luau VM is now fully enabled, resulting in up to 2x or faster code execution.
+  This should not result in any behavior differences in Lune, but if it does, please open an issue.
+- Improved formatting of custom error objects (such as when `fs.readFile` returns an error) when printed or formatted using `stdio.format`.
+
+### Fixed
+
+- Fixed `__type` and `__tostring` metamethods on userdatas and tables not being respected when printed or formatted using `stdio.format`.
+
+[#193]: https://github.com/lune-org/lune/pull/193
+[#196]: https://github.com/lune-org/lune/pull/196
+
+## `0.8.5` - June 1st, 2024
+
+### Changed
+
+- Improved table pretty formatting when using `print`, `warn`, and `stdio.format`:
+
+  - Keys are sorted numerically / alphabetically when possible.
+  - Keys of different types are put in distinct sections for mixed tables.
+  - Tables that are arrays no longer display their keys.
+  - Empty tables are no longer spread across lines.
+
+## Fixed
+
+- Fixed formatted values in tables not being separated by newlines.
+- Fixed panicking (crashing) when using `process.spawn` with a program that does not exist.
+- Fixed `instance:SetAttribute("name", nil)` throwing an error and not removing the attribute.
+
+## `0.8.4` - May 12th, 2024
+
+### Added
 
 - Added a builtin API for regular expressions.
 
@@ -52,11 +113,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   release of Lune on GitHub. Check releases for a full list of targets.
 
 - Added `stdio.readToEnd()` for reading the entire stdin passed to Lune
+
+### Changed
+
+- Split the repository into modular crates instead of a monolith. ([#188])
+
+  If you previously depended on Lune as a crate, nothing about it has changed for version `0.8.4`, but now each individual sub-crate has also been published and is available for use:
+
+  - `lune` (old)
+  - `lune-utils`
+  - `lune-roblox`
+  - `lune-std-*` for every builtin library
+
+  When depending on the main `lune` crate, each builtin library also has a feature flag that can be toggled in the format `std-*`.
+
+  In general, this should mean that it is now much easier to make your own Lune builtin, publish your own flavor of a Lune CLI, or take advantage of all the work that has been done for Lune as a runtime when making your own Rust programs.
+
 - Changed the `User-Agent` header in `net.request` to be more descriptive ([#186])
 - Updated to Luau version `0.622`.
 
 ### Fixed
 
+- Fixed not being able to decompress `lz4` format in high compression mode
 - Fixed stack overflow for tables with circular keys ([#183])
 - Fixed `net.serve` no longer accepting ipv6 addresses
 - Fixed headers in `net.serve` being raw bytes instead of strings
@@ -65,6 +143,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#162]: https://github.com/lune-org/lune/pull/162
 [#183]: https://github.com/lune-org/lune/pull/183
 [#186]: https://github.com/lune-org/lune/pull/186
+[#188]: https://github.com/lune-org/lune/pull/188
 
 ## `0.8.3` - April 15th, 2024
 

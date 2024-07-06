@@ -1,10 +1,13 @@
 use std::env::set_current_dir;
+use std::path::PathBuf;
 use std::process::ExitCode;
 
 use anyhow::Result;
 use console::set_colors_enabled;
 use console::set_colors_enabled_stderr;
 use tokio::fs::read_to_string;
+
+use lune_utils::path::clean_path_and_make_absolute;
 
 use crate::Runtime;
 
@@ -17,7 +20,7 @@ macro_rules! create_tests {
             // We need to change the current directory to the workspace root since
             // we are in a sub-crate and tests would run relative to the sub-crate
             let workspace_dir_str = format!("{}/../../", env!("CARGO_MANIFEST_DIR"));
-            let workspace_dir = std::path::PathBuf::from(workspace_dir_str).canonicalize()?;
+            let workspace_dir = clean_path_and_make_absolute(PathBuf::from(workspace_dir_str));
             set_current_dir(&workspace_dir)?;
 
             // Disable styling for stdout and stderr since
@@ -110,6 +113,7 @@ create_tests! {
     luau_compile: "luau/compile",
     luau_load: "luau/load",
     luau_options: "luau/options",
+    luau_safeenv: "luau/safeenv",
 }
 
 #[cfg(feature = "std-net")]
@@ -137,6 +141,7 @@ create_tests! {
     process_spawn_async: "process/spawn/async",
     process_spawn_basic: "process/spawn/basic",
     process_spawn_cwd: "process/spawn/cwd",
+    process_spawn_no_panic: "process/spawn/no_panic",
     process_spawn_shell: "process/spawn/shell",
     process_spawn_stdin: "process/spawn/stdin",
     process_spawn_stdio: "process/spawn/stdio",
@@ -226,6 +231,8 @@ create_tests! {
     serde_json_encode: "serde/json/encode",
     serde_toml_decode: "serde/toml/decode",
     serde_toml_encode: "serde/toml/encode",
+    serde_hashing_hash: "serde/hashing/hash",
+    serde_hashing_hmac: "serde/hashing/hmac",
 }
 
 #[cfg(feature = "std-stdio")]

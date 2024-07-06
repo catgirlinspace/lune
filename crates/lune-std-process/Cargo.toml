@@ -1,8 +1,10 @@
 [package]
 name = "lune-std-process"
-version = "0.1.0"
+version = "0.1.2"
 edition = "2021"
 license = "MPL-2.0"
+repository = "https://github.com/lune-org/lune"
+description = "Lune standard library - Process"
 
 [lib]
 path = "src/lib.rs"
@@ -12,15 +14,18 @@ workspace = true
 
 [dependencies]
 mlua = { version = "0.9.7", features = ["luau"] }
-mlua-luau-scheduler = "0.0.1"
+mlua-luau-scheduler = { version = "0.0.2", path = "../mlua-luau-scheduler" }
 
 directories = "5.0"
 pin-project = "1.0"
 os_str_bytes = { version = "7.0", features = ["conversions"] }
 
 tokio = { version = "1", default-features = false, features = [
-    "sync",
+    "io-std",
+    "io-util",
     "process",
+    "rt",
+    "sync",
 ] }
 
-lune-utils = { version = "0.1.0", path = "../lune-utils" }
+lune-utils = { version = "0.1.2", path = "../lune-utils" }
