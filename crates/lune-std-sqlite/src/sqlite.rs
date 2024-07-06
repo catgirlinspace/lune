@@ -93,7 +93,7 @@ impl LuaUserData for SQLite {
         
         methods.add_method(
             "executeBatch",
-            |lua, this, (sql): (Option<String>)| {
+            |lua, this, (sql): Option<String>| {
                 this.execute_batch(sql).into_lua_err()?;
                 Ok(())
             },
