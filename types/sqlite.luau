@@ -16,6 +16,10 @@ function SQLiteDB:query<T>(sql: string, params: {any}?): QueryReturn<T>
     return nil :: any
 end
 
+function SQLiteDB:runTransaction<T>(statements: {string}, params: {any}?): {number}
+    return nil :: any
+end
+
 export type SQLiteDB = typeof(SQLiteDB)
 
 local sqlite = {}

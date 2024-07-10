@@ -2,7 +2,7 @@ use lune_utils::TableBuilder;
 use mlua::prelude::{LuaUserData, LuaValue};
 use mlua::{ExternalResult, LuaSerdeExt, UserDataMethods};
 use rusqlite::types::{FromSqlError, FromSqlResult, ValueRef};
-use rusqlite::{params_from_iter, Connection, Result};
+use rusqlite::{params_from_iter, Connection, Result, Transaction};
 use serde_json::{Number, Value};
 use std::collections::HashMap;
 use std::str;
@@ -74,6 +74,30 @@ impl SQLite {
 
         Ok(data)
     }
+
+    pub fn run_transaction(&mut self, sql_statements: Option<Vec<String>>, parameters: Option<Vec<Value>>) -> Result<Vec<f64>> {
+        let tx = self.inner.transaction()?;
+        let parameters = parameters.unwrap_or(Vec::new());
+        let sql_statements = sql_statements.expect("no sql statements");
+        
+        let mut rows_changed: Vec<f64> = Vec::with_capacity(sql_statements.len());
+
+        let mut parameters_used = 0;
+        for statement in sql_statements {
+            let mut stmt = tx.prepare(&*statement)?;
+            let parameter_count = stmt.parameter_count();
+            let mut stmt_params = Vec::with_capacity(parameter_count);
+            for i in 0..parameter_count {
+                stmt_params.push(parameters.get(parameters_used + i))
+            }
+            parameters_used += parameter_count;
+            let rows_modified  = stmt.execute(params_from_iter(stmt_params))?;
+            rows_changed.push(rows_modified as f64);
+        }
+        
+        tx.commit().expect("Failed to commit");
+        Ok(rows_changed)
+    }
 }
 
 impl LuaUserData for SQLite {
@@ -121,6 +145,19 @@ impl LuaUserData for SQLite {
                     table_builder = table_builder.with_sequential_value(row_builder.build()?)?;
                 }
                 Ok(table_builder.build())
+            },
+        );
+        
+        methods.add_method_mut(
+            "runTransaction",
+            |lua, this, (statements, params): (Option<Vec<String>>, Option<Vec<LuaValue>>)| {
+                let mut sql_params: Vec<Value> = Vec::new();
+                for param in params.unwrap_or(Vec::new()) {
+                    let value: Value = lua.from_value(param).into_lua_err()?;
+                    sql_params.push(value);
+                }
+                let rows_modified: Vec<f64> = this.run_transaction(statements, Some(sql_params)).into_lua_err()?;
+                Ok(rows_modified)
             },
         );
     }
