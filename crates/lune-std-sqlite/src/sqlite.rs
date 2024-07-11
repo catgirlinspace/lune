@@ -2,7 +2,7 @@ use lune_utils::TableBuilder;
 use mlua::prelude::{LuaUserData, LuaValue};
 use mlua::{ExternalResult, LuaSerdeExt, UserDataMethods};
 use rusqlite::types::{FromSqlError, FromSqlResult, ValueRef};
-use rusqlite::{params_from_iter, Connection, Result, Transaction};
+use tokio_rusqlite::{params_from_iter, Connection, Result};
 use serde_json::{Number, Value};
 use std::collections::HashMap;
 use std::str;
@@ -17,7 +17,7 @@ fn convert_to_lua_compatible_type(value: ValueRef<'_>) -> FromSqlResult<Value> {
         ValueRef::Real(f) => {
             match Number::from_f64(f) {
                 Some(n) => Ok(Value::Number(n)),
-                _ => return Err(FromSqlError::InvalidType), // FIXME
+                _ => Err(FromSqlError::InvalidType), // FIXME
             }
         }
         ValueRef::Null => Ok(Value::Null),
@@ -30,108 +30,117 @@ pub struct SQLite {
 }
 
 impl SQLite {
-    pub fn connect(path: String) -> Result<SQLite> {
-        let inner = Connection::open(&path)?;
+    pub async fn connect(path: String) -> Result<SQLite> {
+        let inner = Connection::open(&path).await?;
         Ok(Self { inner })
     }
 
-    pub fn execute(&self, sql: Option<String>, parameters: Option<Vec<Value>>) -> Result<usize> {
-        self.inner.execute(
-            &sql.unwrap(),
-            params_from_iter(parameters.unwrap_or(Vec::new())),
-        )
+    pub async fn execute(&self, sql: Option<String>, parameters: Option<Vec<Value>>) -> Result<usize> {
+        self.inner.call(|conn| {
+            Ok(conn.execute(
+                &sql.unwrap(),
+                params_from_iter(parameters.unwrap_or(Vec::new())),
+            )?)
+        }).await
     }
 
-    pub fn execute_batch(&self, sql: Option<String>) -> Result<()> {
-        self.inner.execute_batch(
-            &sql.unwrap(),
-        )
+    pub async fn execute_batch(&self, sql: Option<String>) -> Result<()> {
+        self.inner.call(|conn| {
+            conn.execute_batch(
+                &sql.unwrap(),
+            )?;
+            Ok(())
+        }).await
     }
 
-    pub fn query(
+    pub async fn query(
         &self,
         sql: Option<String>,
         parameters: Option<Vec<Value>>,
     ) -> Result<Vec<HashMap<String, Value>>> {
-        let mut stmt = self.inner.prepare(&sql.unwrap())?;
-        let mut column_names: Vec<String> = Vec::new();
-        for column_name in stmt.column_names() {
-            column_names.push(column_name.to_string());
-        }
-        let mut rows = stmt
-            .query(params_from_iter(parameters.unwrap_or(Vec::new())))?;
-        let mut data = Vec::new();
-
-        while let Some(row) = rows.next()? {
-            let mut row_data = HashMap::new();
-            for (i, column_name) in column_names.iter().enumerate() {
-                let value_ref = row.get_ref(i)?;
-                let value = convert_to_lua_compatible_type(value_ref)?;
-                row_data.insert(column_name.to_string(), value);
+        self.inner.call(|conn| {
+            let mut stmt = conn.prepare(&sql.unwrap())?;
+            let mut column_names: Vec<String> = Vec::new();
+            for column_name in stmt.column_names() {
+                column_names.push(column_name.to_string());
             }
-            data.push(row_data);
-        }
+            let mut rows = stmt
+                .query(params_from_iter(parameters.unwrap_or_default()))?;
+            let mut data = Vec::new();
 
-        Ok(data)
+            while let Some(row) = rows.next()? {
+                let mut row_data = HashMap::new();
+                for (i, column_name) in column_names.iter().enumerate() {
+                    let value_ref = row.get_ref(i)?;
+                    let value = convert_to_lua_compatible_type(value_ref).unwrap();
+                    row_data.insert(column_name.to_string(), value);
+                }
+                data.push(row_data);
+            }
+
+            Ok(data)
+        }).await
     }
 
-    pub fn run_transaction(&mut self, sql_statements: Option<Vec<String>>, parameters: Option<Vec<Value>>) -> Result<Vec<f64>> {
-        let tx = self.inner.transaction()?;
-        let parameters = parameters.unwrap_or(Vec::new());
-        let sql_statements = sql_statements.expect("no sql statements");
-        
-        let mut rows_changed: Vec<f64> = Vec::with_capacity(sql_statements.len());
+    pub async fn run_transaction(&mut self, sql_statements: Option<Vec<String>>, parameters: Option<Vec<Value>>) -> Result<Vec<f64>> {
+        self.inner.call(|conn| {
+            let tx = conn.transaction()?;
+            let parameters = parameters.unwrap_or(Vec::new());
+            let sql_statements = sql_statements.expect("no sql statements");
 
-        let mut parameters_used = 0;
-        for statement in sql_statements {
-            let mut stmt = tx.prepare(&*statement)?;
-            let parameter_count = stmt.parameter_count();
-            let mut stmt_params = Vec::with_capacity(parameter_count);
-            for i in 0..parameter_count {
-                stmt_params.push(parameters.get(parameters_used + i))
+            let mut rows_changed: Vec<f64> = Vec::with_capacity(sql_statements.len());
+
+            let mut parameters_used = 0;
+            for statement in sql_statements {
+                let mut stmt = tx.prepare(&*statement)?;
+                let parameter_count = stmt.parameter_count();
+                let mut stmt_params = Vec::with_capacity(parameter_count);
+                for i in 0..parameter_count {
+                    stmt_params.push(parameters.get(parameters_used + i))
+                }
+                parameters_used += parameter_count;
+                let rows_modified  = stmt.execute(params_from_iter(stmt_params))?;
+                rows_changed.push(rows_modified as f64);
             }
-            parameters_used += parameter_count;
-            let rows_modified  = stmt.execute(params_from_iter(stmt_params))?;
-            rows_changed.push(rows_modified as f64);
-        }
-        
-        tx.commit().expect("Failed to commit");
-        Ok(rows_changed)
+
+            tx.commit().expect("Failed to commit");
+            Ok(rows_changed)
+        }).await
     }
 }
 
 impl LuaUserData for SQLite {
     fn add_methods<'lua, M: UserDataMethods<'lua, Self>>(methods: &mut M) {
-        methods.add_method(
+        methods.add_async_method(
             "execute",
-            |lua, this, (sql, params): (Option<String>, Option<Vec<LuaValue>>)| {
+            |lua, this, (sql, params): (Option<String>, Option<Vec<LuaValue>>)| async move {
                 let mut sql_params: Vec<Value> = Vec::new();
                 for param in params.unwrap_or(Vec::new()) {
                     let value: Value = lua.from_value(param).into_lua_err()?;
                     sql_params.push(value);
                 }
-                let rows_modified: f64 = this.execute(sql, Some(sql_params)).into_lua_err()? as f64;
+                let rows_modified: f64 = this.execute(sql, Some(sql_params)).await.into_lua_err()? as f64;
                 Ok(rows_modified)
             },
         );
         
-        methods.add_method(
+        methods.add_async_method(
             "executeBatch",
-            |lua, this, (sql): Option<String>| {
-                this.execute_batch(sql).into_lua_err()?;
+            |_lua, this, sql: Option<String>| async move {
+                this.execute_batch(sql).await.into_lua_err()?;
                 Ok(())
             },
         );
 
-        methods.add_method(
+        methods.add_async_method(
             "query",
-            |lua, this, (sql, params): (Option<String>, Option<Vec<LuaValue>>)| {
+            |lua, this, (sql, params): (Option<String>, Option<Vec<LuaValue>>)| async move {
                 let mut sql_params: Vec<Value> = Vec::new();
                 for param in params.unwrap_or(Vec::new()) {
                     let value: Value = lua.from_value(param).into_lua_err()?;
                     sql_params.push(value);
                 }
-                let data = this.query(sql, Some(sql_params)).into_lua_err()?;
+                let data = this.query(sql, Some(sql_params)).await.into_lua_err()?;
                 let mut table_builder = TableBuilder::new(lua)?;
                 for row in data {
                     let mut row_builder = TableBuilder::new(lua)?;
@@ -148,15 +157,15 @@ impl LuaUserData for SQLite {
             },
         );
         
-        methods.add_method_mut(
+        methods.add_async_method_mut(
             "runTransaction",
-            |lua, this, (statements, params): (Option<Vec<String>>, Option<Vec<LuaValue>>)| {
+            |lua, this, (statements, params): (Option<Vec<String>>, Option<Vec<LuaValue>>)| async move {
                 let mut sql_params: Vec<Value> = Vec::new();
                 for param in params.unwrap_or(Vec::new()) {
                     let value: Value = lua.from_value(param).into_lua_err()?;
                     sql_params.push(value);
                 }
-                let rows_modified: Vec<f64> = this.run_transaction(statements, Some(sql_params)).into_lua_err()?;
+                let rows_modified: Vec<f64> = this.run_transaction(statements, Some(sql_params)).await.into_lua_err()?;
                 Ok(rows_modified)
             },
         );

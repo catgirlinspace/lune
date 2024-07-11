@@ -7,11 +7,13 @@ edition = "2021"
 path = "src/lib.rs"
 
 [dependencies]
-mlua = { version = "0.9.7", features = ["luau"] }
+mlua = { version = "0.9.7", features = ["luau", "serialize"] }
 rusqlite = { version = "0.31.0", features = ["bundled", "chrono", "serde_json"] }
+tokio-rusqlite = "0.5.1"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1.0", features = ["preserve_order"] }
 lune-utils = { version = "0.1.0", path = "../lune-utils" }
+tokio = { version = "1" }
 
 [lints]
 workspace = true

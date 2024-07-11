@@ -17,6 +17,10 @@ Errors when out of memory.
  */
 pub fn module(lua: &Lua) -> LuaResult<LuaTable> {
     TableBuilder::new(lua)?
-        .with_function("new", |_, path: String| Ok(SQLite::connect(path).unwrap()))?
+        .with_async_function("new", connect)?
         .build_readonly()
+}
+
+async fn connect(_: &Lua, path: String) -> mlua::Result<SQLite> {
+    SQLite::connect(path).await.into_lua_err()
 }
