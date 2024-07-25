@@ -24,6 +24,10 @@ export type SQLiteDB = typeof(SQLiteDB)
 
 local sqlite = {}
 
+export type NullUserdata = {}
+
+sqlite.NULL = {} :: NullUserdata
+
 function sqlite.new(path: string): SQLiteDB
     return nil :: any
 end

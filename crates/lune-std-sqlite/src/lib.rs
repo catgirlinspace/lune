@@ -1,11 +1,12 @@
 #![allow(clippy::cargo_common_metadata)]
 
 mod sqlite;
+mod null;
 
 use mlua::prelude::*;
 
 use lune_utils::TableBuilder;
-
+use crate::null::NullUserdata;
 use crate::sqlite::SQLite;
 
 /**
@@ -17,6 +18,7 @@ Errors when out of memory.
  */
 pub fn module(lua: &Lua) -> LuaResult<LuaTable> {
     TableBuilder::new(lua)?
+        .with_value("NULL", NullUserdata {})?
         .with_async_function("new", connect)?
         .build_readonly()
 }

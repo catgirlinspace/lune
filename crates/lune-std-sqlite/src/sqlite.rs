@@ -6,6 +6,8 @@ use tokio_rusqlite::{params_from_iter, Connection, Result};
 use serde_json::{Number, Value};
 use std::collections::HashMap;
 use std::str;
+use serde_json::Value::Null;
+use crate::null::NullUserdata;
 
 fn convert_to_lua_compatible_type(value: ValueRef<'_>) -> FromSqlResult<Value> {
     match value {
@@ -96,7 +98,7 @@ impl SQLite {
                 let parameter_count = stmt.parameter_count();
                 let mut stmt_params = Vec::with_capacity(parameter_count);
                 for i in 0..parameter_count {
-                    stmt_params.push(parameters.get(parameters_used + i))
+                    stmt_params.push(parameters.get(parameters_used + i));
                 }
                 parameters_used += parameter_count;
                 let rows_modified  = stmt.execute(params_from_iter(stmt_params))?;
@@ -116,6 +118,13 @@ impl LuaUserData for SQLite {
             |lua, this, (sql, params): (Option<String>, Option<Vec<LuaValue>>)| async move {
                 let mut sql_params: Vec<Value> = Vec::new();
                 for param in params.unwrap_or(Vec::new()) {
+                    if param.is_userdata() {
+                        let userdata = param.as_userdata().unwrap();
+                        if userdata.is::<NullUserdata>() {
+                            sql_params.push(Null);
+                            continue
+                        }
+                    }
                     let value: Value = lua.from_value(param).into_lua_err()?;
                     sql_params.push(value);
                 }
