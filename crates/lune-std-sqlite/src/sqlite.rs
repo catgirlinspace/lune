@@ -14,7 +14,7 @@ fn convert_to_lua_compatible_type(value: ValueRef<'_>) -> FromSqlResult<Value> {
         ValueRef::Text(s) => Ok(serde_json::from_slice(s)
             .unwrap_or(Value::String(str::from_utf8(s).unwrap().to_string()))), // KO for b"text"
         ValueRef::Blob(b) => Ok(serde_json::from_slice(b)
-            .unwrap_or(Value::String(str::from_utf8(b).unwrap().to_string()))),
+            .unwrap_or(Value::from(b))),
         ValueRef::Integer(i) => Ok(Value::Number(Number::from(i))),
         ValueRef::Real(f) => {
             match Number::from_f64(f) {
